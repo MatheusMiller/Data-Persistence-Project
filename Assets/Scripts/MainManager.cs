@@ -5,7 +5,12 @@ using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using System.IO;
 using System;
+using System.Linq;
 
+// create a new scene "Game Over" that will show the game over text and
+// the HS game over text, in this you will input your name, after that
+// will show the HS in both cases, quit and restart/start button on it.
+// Continue in game over section.
 public class MainManager : MonoBehaviour
 {
     public Brick BrickPrefab;
@@ -19,8 +24,10 @@ public class MainManager : MonoBehaviour
     private int m_Points;
 
     private bool m_GameOver = false;
+    private bool m_HSGameOver = false;
 
     private List<HSData> hSDatas = new List<HSData>();
+    private Data data = new Data();
 
 
     // Start is called before the first frame update
@@ -40,6 +47,7 @@ public class MainManager : MonoBehaviour
                 brick.onDestroyed.AddListener(AddPoint);
             }
         }
+        data.LoadData();
     }
 
     private void Update()
@@ -74,17 +82,20 @@ public class MainManager : MonoBehaviour
 
     public void GameOver()
     {
-        hSDatas.Add(new HSData("Test1", m_Points));
-        hSDatas.Add(new HSData("Test2", m_Points * 2));
-        hSDatas.Add(new HSData("Test3", m_Points * 3));
-        hSDatas.Add(new HSData("Test4", m_Points * 4));
-        Data data = new Data { listHSData = hSDatas };
-        data.SaveData();
-        data.LoadData();
 
+        if (data.listHSData.Count < 5 || data.listHSData[4].playerPoints < m_Points)
+        {
+            m_HSGameOver = true;
+            Debug.Log("HS");
+        }
+            
+        else
+        {
+            m_GameOver = true;
+            Debug.Log("no HS");
+            //GameOverText.SetActive(true);
+        }
 
-        m_GameOver = true;
-        GameOverText.SetActive(true);
     }
 
     [Serializable]
@@ -98,6 +109,11 @@ public class MainManager : MonoBehaviour
             playerName = name;
             playerPoints = points;
         }
+
+        public override string ToString()
+        {
+            return "Name: " + playerName + "     Points: " + playerPoints;
+        }
     }
 
     [Serializable]
@@ -109,7 +125,6 @@ public class MainManager : MonoBehaviour
         {
            
             string json = JsonUtility.ToJson(this);
-            Debug.Log(json);
             File.WriteAllText(Application.persistentDataPath + "/savedata.json", json);
         }
 
@@ -120,13 +135,27 @@ public class MainManager : MonoBehaviour
             {
                 string json = File.ReadAllText(path);
                 JsonUtility.FromJsonOverwrite(json, this);
-                for (int i = 0; i < listHSData.Count; i++)
+                
+                foreach (HSData data in listHSData)
                 {
-                    Debug.Log(listHSData[i].playerName);
-                    Debug.Log(listHSData[i].playerPoints);
+                    Debug.Log(data);
+                }
+                Debug.Log("------");
+                OrderList();
+                foreach (HSData data in listHSData)
+                {
+                    Debug.Log(data);
                 }
             }
         }
+
+        public void OrderList()
+        {
+            listHSData = listHSData.OrderByDescending(player => player.playerPoints).ToList();
+        }
+
+
+
     }
     
 
