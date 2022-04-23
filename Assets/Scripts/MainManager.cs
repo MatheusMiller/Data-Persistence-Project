@@ -6,6 +6,7 @@ using UnityEngine.UI;
 using System.IO;
 using System;
 using System.Linq;
+using UnityEditor.Events;
 
 // create a new scene "Game Over" that will show the game over text and
 // the HS game over text, in this you will input your name, after that
@@ -13,11 +14,15 @@ using System.Linq;
 // Continue in game over section.
 public class MainManager : MonoBehaviour
 {
-    public Brick BrickPrefab;
+    public static MainManager instance;
+
+    [SerializeField] private Brick BrickPrefab;
     public int LineCount = 6;
-    public Rigidbody Ball;
+    private Rigidbody Ball;
+    [SerializeField] private Brick brickAdded;
 
     public Text ScoreText;
+    public Text BestScoreText;
     public GameObject GameOverText;
 
     private bool m_Started = false;
@@ -25,14 +30,29 @@ public class MainManager : MonoBehaviour
 
     private bool m_GameOver = false;
     private bool m_HSGameOver = false;
-
-    private List<HSData> hSDatas = new List<HSData>();
     private Data data = new Data();
 
 
-    // Start is called before the first frame update
-    void Start()
+    void Awake()
     {
+        if (instance != null)
+        {
+            Destroy(gameObject);
+        }
+        else
+        {
+            instance = this;
+            DontDestroyOnLoad(gameObject);     
+        }
+
+        data.LoadData();
+        
+        instance.Ball = GameObject.Find("Ball").GetComponent<Rigidbody>();
+        instance.ScoreText = GameObject.Find("ScoreText").GetComponent<Text>();
+        instance.BrickPrefab = Resources.Load<Brick>("BrickPrefab").GetComponent<Brick>();
+        instance.m_Points = 0;
+        // falta ajeitar os canvas, Game Over Scene e verificar se o json está funcionado
+
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
 
@@ -42,12 +62,20 @@ public class MainManager : MonoBehaviour
             for (int x = 0; x < perLine; ++x)
             {
                 Vector3 position = new Vector3(-1.5f + step * x, 2.5f + i * 0.3f, 0);
-                var brick = Instantiate(BrickPrefab, position, Quaternion.identity);
-                brick.PointValue = pointCountArray[i];
-                brick.onDestroyed.AddListener(AddPoint);
+                instance.brickAdded = Instantiate(instance.BrickPrefab, position, Quaternion.identity);
+                instance.brickAdded.PointValue = pointCountArray[i];
             }
         }
-        data.LoadData();
+        
+        if (data.listHSData.Count > 0)
+        {
+            BestScoreText.text = $"Best Score: " + data.listHSData[0].playerName + " => " + data.listHSData[0].playerPoints;
+        }
+        else
+        {
+            BestScoreText.text = "No best score yet";
+        }
+        
     }
 
     private void Update()
@@ -67,33 +95,49 @@ public class MainManager : MonoBehaviour
         }
         else if (m_GameOver)
         {
+            //GameOverTextRenderer.enabled = true;
             if (Input.GetKeyDown(KeyCode.Space))
             {
+                m_Started = false;
+                m_GameOver = false;
+                //GameOverTextRenderer.enabled = false;
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+#if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+#endif
+                Application.Quit();
+            }
+        }
+
+        else if (m_HSGameOver)
+        {
+            m_Started = false;
+            m_HSGameOver = false;
+            SceneManager.LoadScene("GameOver");
         }
     }
 
-    void AddPoint(int point)
+    public void AddPoint(int point)
     {
+        Debug.Log("point");
         m_Points += point;
         ScoreText.text = $"Score : {m_Points}";
     }
 
     public void GameOver()
     {
-
+        
         if (data.listHSData.Count < 5 || data.listHSData[4].playerPoints < m_Points)
         {
             m_HSGameOver = true;
-            Debug.Log("HS");
         }
             
         else
         {
             m_GameOver = true;
-            Debug.Log("no HS");
-            //GameOverText.SetActive(true);
         }
 
     }
@@ -135,17 +179,8 @@ public class MainManager : MonoBehaviour
             {
                 string json = File.ReadAllText(path);
                 JsonUtility.FromJsonOverwrite(json, this);
-                
-                foreach (HSData data in listHSData)
-                {
-                    Debug.Log(data);
-                }
-                Debug.Log("------");
                 OrderList();
-                foreach (HSData data in listHSData)
-                {
-                    Debug.Log(data);
-                }
+
             }
         }
 
