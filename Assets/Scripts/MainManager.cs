@@ -18,19 +18,19 @@ public class MainManager : MonoBehaviour
 
     [SerializeField] private Brick BrickPrefab;
     public int LineCount = 6;
-    private Rigidbody Ball;
+    [SerializeField] private Rigidbody Ball;
     [SerializeField] private Brick brickAdded;
 
-    public Text ScoreText;
-    public Text BestScoreText;
-    public GameObject GameOverText;
+    [SerializeField] private Text ScoreText;
+    [SerializeField] private Text BestScoreText;
+    [SerializeField] private GameObject GameOverText;
 
-    private bool m_Started = false;
-    private int m_Points;
+    [SerializeField] private bool m_Started = false;
+    public int m_Points;
 
-    private bool m_GameOver = false;
-    private bool m_HSGameOver = false;
-    private Data data = new Data();
+    [SerializeField] private bool m_GameOver = false;
+    [SerializeField] private bool m_HSGameOver = false;
+    public Data data = new Data();
 
 
     void Awake()
@@ -50,8 +50,11 @@ public class MainManager : MonoBehaviour
         instance.Ball = GameObject.Find("Ball").GetComponent<Rigidbody>();
         instance.ScoreText = GameObject.Find("ScoreText").GetComponent<Text>();
         instance.BrickPrefab = Resources.Load<Brick>("BrickPrefab").GetComponent<Brick>();
+        instance.BestScoreText = GameObject.Find("BestScoreText").GetComponent<Text>();
+        instance.GameOverText = GameObject.Find("GameOverText");
+        instance.GameOverText.SetActive(false);
         instance.m_Points = 0;
-        // falta ajeitar os canvas, Game Over Scene e verificar se o json está funcionado
+        // falta a Game Over Scene e verificar se o json está funcionado
 
         const float step = 0.6f;
         int perLine = Mathf.FloorToInt(4.0f / step);
@@ -67,7 +70,7 @@ public class MainManager : MonoBehaviour
             }
         }
         
-        if (data.listHSData.Count > 0)
+        if (data.listHSData != null && data.listHSData.Count > 0)
         {
             BestScoreText.text = $"Best Score: " + data.listHSData[0].playerName + " => " + data.listHSData[0].playerPoints;
         }
@@ -95,12 +98,12 @@ public class MainManager : MonoBehaviour
         }
         else if (m_GameOver)
         {
-            //GameOverTextRenderer.enabled = true;
+            instance.GameOverText.SetActive(true);
             if (Input.GetKeyDown(KeyCode.Space))
             {
                 m_Started = false;
                 m_GameOver = false;
-                //GameOverTextRenderer.enabled = false;
+                instance.GameOverText.SetActive(false);
                 SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             }
             if (Input.GetKeyDown(KeyCode.Escape))
@@ -122,17 +125,17 @@ public class MainManager : MonoBehaviour
 
     public void AddPoint(int point)
     {
-        Debug.Log("point");
         m_Points += point;
         ScoreText.text = $"Score : {m_Points}";
     }
 
     public void GameOver()
     {
-        
-        if (data.listHSData.Count < 5 || data.listHSData[4].playerPoints < m_Points)
+
+        if (data.listHSData == null || (data.listHSData.Count < 5 || data.listHSData[4].playerPoints < m_Points))
         {
             m_HSGameOver = true;
+
         }
             
         else
@@ -175,6 +178,7 @@ public class MainManager : MonoBehaviour
         public void LoadData()
         {
             string path = Application.persistentDataPath + "/savedata.json";
+            Debug.Log(path);
             if (File.Exists(path))
             {
                 string json = File.ReadAllText(path);
@@ -189,7 +193,13 @@ public class MainManager : MonoBehaviour
             listHSData = listHSData.OrderByDescending(player => player.playerPoints).ToList();
         }
 
-
+        public void PrintData()
+        {
+            foreach(HSData data in listHSData)
+            {
+                Debug.Log(data.ToString());
+            }
+        }
 
     }
     
